@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="PublishConfigData">
+    <serverData>
+      <paths name="Remote Host (13b33b23-e1bb-4e89-89cb-fa19abe8cdec)">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/home/halo/cpp/modifyServer" local="$PROJECT_DIR$" web="/" />
+          </mappings>
+        </serverdata>
+      </paths>
+    </serverData>
+  </component>
+</project>
