@@ -29,6 +29,8 @@ public:
 
     void handleAccept(int _fd);
 
+    Epoll* getEpollObj();
+
 private:
     int port;
     int listen_fd;

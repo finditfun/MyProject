@@ -12,7 +12,7 @@ void setNonBlock(int _fd) {
     exit_if(r < 0, "fcntl failed");
 }
 
-Server::Server(int _port) : port(_port), listen_fd(socket(AF_INET, SOCK_STREAM, 0)), httpChan(new HttpData()) {
+Server::Server(int _port) : port(_port), listen_fd(socket(AF_INET, SOCK_STREAM, 0)), httpChan(new HttpData(this)) {
     exit_if(listen_fd < 0, "socket failed");
     memset(&server_addr, 0, sizeof(server_addr));
     initBindAndListen();
@@ -37,7 +37,7 @@ void Server::initBindAndListen() {
     printf("fd %d listening at %d\n", listen_fd, port);
     setNonBlock(listen_fd);
 
-    ep.updateEvents(listen_fd, EPOLLIN, EPOLL_CTL_ADD);
+    ep.updateEvents(listen_fd, EPOLLIN | EPOLLRDHUP, EPOLL_CTL_ADD);
 }
 
 //启动Server，等待事件的到来
@@ -49,17 +49,18 @@ int Server::run() {
         for (int i = 0; i < n; i++) {
             int fd = activeEvs[i].data.fd;
             int events = activeEvs[i].events;
-            if (events & (EPOLLIN | EPOLLERR)) {
-                if (fd == listen_fd) {
-                    handleAccept(fd);
-                } else {
+
+            if (fd == listen_fd) {
+                handleAccept(fd);
+
+            } else if(events & EPOLLIN){
+                    printf("new EPOLLIN event in fd: %d \n", fd);
                     httpChan->handleRead(fd);
-                }
             } else if (events & EPOLLOUT) { // 请注意，例子为了保持简洁性，没有很好的处理极端情况，例如EPOLLIN和EPOLLOUT同时到达的情况
-                printf("new EPOLLOUT event \n");
+                printf("new EPOLLOUT event in fd: %d \n", fd);
                 if (true)
                     printf("handling epollout\n");
-                httpChan->handleWrite(fd);
+                httpChan->sendFile(fd);
             } else {
                 exit_if(1, "unknown event");
             }
@@ -79,5 +80,10 @@ void Server::handleAccept(int _fd) {
     exit_if(r < 0, "getpeername failed");
     printf("accept a connection from %s\n", inet_ntoa(raddr.sin_addr));
     setNonBlock(cfd);
-    ep.updateEvents(cfd, EPOLLIN | EPOLLOUT | EPOLLET, EPOLL_CTL_ADD);
+    ep.updateEvents(cfd, EPOLLIN |EPOLLET, EPOLL_CTL_ADD);
+}
+
+//获得该Server内的Epoll OBJ，供HttpData来使用
+Epoll* Server::getEpollObj() {
+    return &ep;
 }
